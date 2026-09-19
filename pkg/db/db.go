@@ -30,8 +30,16 @@ func Init(dbFile string) error {
 
 	_, err = database.Exec(schema)
 	if err != nil {
+		_ = database.Close()
 		return err
 	}
 
+	return nil
+}
+
+func Close() error {
+	if database != nil {
+		return database.Close()
+	}
 	return nil
 }

@@ -1,16 +1,22 @@
 package api
 
 import (
+	"errors"
+	"github.com/yamixdev/go-final-sprint/pkg/db"
+	"log"
 	"net/http"
 	"time"
-
-	"github.com/yamixdev/go-final-sprint/pkg/db"
 )
 
 func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeJSON(w, map[string]any{
+		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "не указан идентификатор",
 		})
 		return
@@ -18,8 +24,15 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	task, err := db.GetTask(id)
 	if err != nil {
-		writeJSON(w, map[string]any{
-			"error": err.Error(),
+		if errors.Is(err, db.ErrTaskNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]any{
+				"error": err.Error(),
+			})
+			return
+		}
+		log.Println("db.GetTask error:", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "ошибка при получении задачи",
 		})
 		return
 	}
@@ -29,7 +42,7 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		next, nextErr := NextDate(time.Now(), task.Date, task.Repeat)
 		if nextErr != nil {
-			writeJSON(w, map[string]any{
+			writeJSON(w, http.StatusBadRequest, map[string]any{
 				"error": nextErr.Error(),
 			})
 			return
@@ -39,11 +52,12 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		writeJSON(w, map[string]any{
-			"error": err.Error(),
+		log.Println("doneTask error:", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "ошибка при обновлении задачи",
 		})
 		return
 	}
 
-	writeJSON(w, map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{})
 }

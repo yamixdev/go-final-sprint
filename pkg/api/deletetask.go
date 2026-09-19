@@ -1,15 +1,16 @@
 package api
 
 import (
-	"net/http"
-
+	"errors"
 	"github.com/yamixdev/go-final-sprint/pkg/db"
+	"log"
+	"net/http"
 )
 
 func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeJSON(w, map[string]any{
+		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "не указан идентификатор",
 		})
 		return
@@ -17,11 +18,18 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DeleteTask(id)
 	if err != nil {
-		writeJSON(w, map[string]any{
-			"error": err.Error(),
+		if errors.Is(err, db.ErrTaskNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]any{
+				"error": err.Error(),
+			})
+			return
+		}
+		log.Println("db.DeleteTask error:", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "ошибка при удалении задачи",
 		})
 		return
 	}
 
-	writeJSON(w, map[string]any{})
+	writeJSON(w, http.StatusOK, map[string]any{})
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -46,14 +47,14 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
-		writeJSON(w, map[string]any{
+		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": err.Error(),
 		})
 		return
 	}
 
 	if task.Title == "" {
-		writeJSON(w, map[string]any{
+		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": "не указан заголовок задачи",
 		})
 		return
@@ -61,7 +62,7 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = checkDate(&task)
 	if err != nil {
-		writeJSON(w, map[string]any{
+		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": err.Error(),
 		})
 		return
@@ -69,13 +70,14 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := db.AddTask(&task)
 	if err != nil {
-		writeJSON(w, map[string]any{
-			"error": err.Error(),
+		log.Println("db.AddTask error:", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": "ошибка при добавлении задачи",
 		})
 		return
 	}
 
-	writeJSON(w, map[string]any{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"id": strconv.FormatInt(id, 10),
 	})
 }
